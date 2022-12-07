@@ -10,9 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r packages, include=FALSE}
-#if (!require("easypackages")) install.packages("easypackages")
-library(easypackages)
-libraries("ggplot2", "cmdstanr", "HDInterval", "bayesplot")
+libraries("ggplot2", "cmdstanr", "HDInterval", "bayesplot", "easypackages")
 
 # readxl: for reading data set
 if (!require(readxl)) install.packages("readxl")
@@ -44,13 +42,19 @@ data {
 
 parameters {
   real alpha;
-  real beta;
+  real betaC;
+  real betaD
 }
 
+## number of successes out of 2 trials (per day)
 model {
-  acc ~ bernoulli_logit(alpha + beta * cityblock);
+  acc ~ binomial(2,inv_logit(alpha + betaC * cityblock + betaD * session));
 }
 
+generated quantities (R2)
+
+Model comparison
+For each value of acc in the iteration, get the LL
 "
 ```
 
@@ -123,9 +127,3 @@ Euclidean_Model_Samples$summary()
 # maximum R-hat
 max(Euclidean_Model_Samples$summary()$rhat, na.rm = TRUE)
 ```
-
-
-
-
-
-
