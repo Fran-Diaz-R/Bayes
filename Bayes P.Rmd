@@ -9,6 +9,26 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r packages, include=FALSE}
+#if (!require("easypackages")) install.packages("easypackages")
+library(easypackages)
+libraries("ggplot2", "cmdstanr", "HDInterval", "bayesplot")
+
+# readxl: for reading data set
+if (!require(readxl)) install.packages("readxl")
+library(readxl)
+
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install("genefilter", version = "3.15")
+if (!requireNamespace("modeest")) install.packages("modeest")
+library(modeest)
+```
+
+## Data
+```{r}
+Data = read.csv("DataBayes.csv")
+```
+
 ```{r}
 # IRT Model Syntax (slope/intercept form ) ==================================================
 modelIRT_2PL_SI_syntax = "
