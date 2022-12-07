@@ -27,78 +27,43 @@ library(modeest)
 ## Data
 ```{r}
 Data = read.csv("DataBayes.csv")
-```
-
-```{r}
-# IRT Model Syntax (slope/intercept form ) ==================================================
-modelIRT_2PL_SI_syntax = "
-
-data {
-  int<lower=0> nObs;                            // number of observations
-
-  vector[nItems] meanMu;             // prior mean vector for intercept parameters
-  matrix[nItems, nItems] covMu;      // prior covariance matrix for intercept parameters
-  
-  vector[nItems] meanLambda;         // prior mean vector for discrimination parameters
-  matrix[nItems, nItems] covLambda;  // prior covariance matrix for discrimination parameters
-}
-
-parameters {
-  vector[nObs] theta;                // the latent variables (one for each person)
-  vector[nItems] mu;                 // the item intercepts (one for each item)
-  vector[nItems] lambda;             // the factor loadings/item discriminations (one for each item)
-}
-
-model {
-  
-  lambda ~ multi_normal(meanLambda, covLambda); // Prior for item discrimination/factor loadings
-  mu ~ multi_normal(meanMu, covMu);             // Prior for item intercepts
-  
-  theta ~ normal(0, 1);                         // Prior for latent variable (with mean/sd specified)
-  
-  for (item in 1:nItems){
-    Y[item] ~ bernoulli_logit(mu[item] + lambda[item]*theta);
-  }
-  
-}
-
-"
+Data = as.data.frame(Data)
+Data$CityBlock = Data$CityBlock-16
 ```
 
 
 ```{r}
-model04_Syntax = "
+## City-Block Model
+CityBlock_Model_Syntax = "
 
 data {
   int<lower=0> N;
   vector[N] cityblock;
+  int<lower=0, upper=1> acc[N];
 }
 
 parameters {
-  real beta0;
-  real betacity;
+  real alpha;
+  real beta;
 }
 
 model {
-  beta0 ~ normal(0,1000);
-  betacity ~ normal(0,1000);
-  
-  acc ~ bernoulli_logit(beta0 + betacity);
+  acc ~ bernoulli_logit(alpha + beta * cityblock);
 }
 
 "
 ```
 
 ```{r}
-model04_Stan = cmdstan_model(stan_file = write_stan_file(model04_Syntax))
+CityBlock_Model_Stan = cmdstan_model(stan_file = write_stan_file(CityBlock_Model_Syntax))
 
 mode04_StanData = list(
   N = nrow(Data),
   acc = Data$accuracy,
-  betacity = Data$xxxxx,
+  cityblock = Data$CityBlock
 )
 
-model04_Samples = model04_Stan$sample(
+CityBlock_Model_Samples = CityBlock_Model_Stan$sample(
   data = mode04_StanData,
   seed = 190920221,
   chains = 4,
@@ -108,41 +73,56 @@ model04_Samples = model04_Stan$sample(
 )
 
 # assess convergence: summary of all parameters
-model04_Samples$summary()
+CityBlock_Model_Samples$summary()
+
+# maximum R-hat
+max(CityBlock_Model_Samples$summary()$rhat, na.rm = TRUE)
 ```
-
-
-
 
 
 ```{r}
-model04b_Syntax = "
-
+## Euclidean Model
+Euclidean_Model_Syntax = "
 data {
   int<lower=0> N;
-  vector[N] Cityblock;
   vector[N] Euclidean;
+  int<lower=0, upper=1> acc[N];
 }
 
 parameters {
-  real beta0;
-  real betacity;
-  real betaeuclidean;
+  real alpha;
+  real beta;
 }
 
 model {
-  beta0 ~ normal(0,1000);
-  betacity ~ normal(0,1000);
-  betaeuclidean ~ normal(0,1000);
-  
-  sigma ~ exponential(.1); // prior for sigma
-  weightLB ~ bernoulli_logit(
-    beta0 + betacity * betaeuclidean);
+  acc ~ bernoulli_logit(alpha + beta * Euclidean);
 }
 
 "
-```
 
+Euclidean_Model_Stan = cmdstan_model(stan_file = write_stan_file(Euclidean_Model_Syntax))
+
+mode04_StanData = list(
+  N = nrow(Data),
+  acc = Data$accuracy,
+  Euclidean = Data$Euclidean
+)
+
+Euclidean_Model_Samples = Euclidean_Model_Stan$sample(
+  data = mode04_StanData,
+  seed = 190920221,
+  chains = 4,
+  parallel_chains = 4,
+  iter_warmup = 4000,
+  iter_sampling = 4000
+)
+
+# assess convergence: summary of all parameters
+Euclidean_Model_Samples$summary()
+
+# maximum R-hat
+max(Euclidean_Model_Samples$summary()$rhat, na.rm = TRUE)
+```
 
 
 
