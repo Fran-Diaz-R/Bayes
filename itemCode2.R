@@ -6,7 +6,6 @@ load(file = "dummy.RData")
 
 itemList = unique(dummy$item)[order(unique(dummy$item))]
 sessionList = unique(dummy$s)[order(unique(dummy$s))]
-pidgeonList = unique 
 
 newData = NULL
 item=1
