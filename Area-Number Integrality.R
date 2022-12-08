@@ -24,8 +24,8 @@ source("C:/Users/franc/OneDrive - University of Iowa/Wasserman's Lab/R scripts/t
 
 
 ## Sets working directory
-setwd("C:/Users/franc/OneDrive - University of Iowa/Wasserman's Lab/Num - Area Integrability Separability/Shift 1")
-path = ("C:/Users/franc/OneDrive - University of Iowa/Wasserman's Lab/Num - Area Integrability Separability/Shift 1")
+setwd("C:/Users/geral/OneDrive - University of Iowa/PhD portfolio/2. Courses/3. Fall 2022/PSQF7375 Bayesian Psychometric Modeling (Jonathan Templin)/Bayes/Shift 1")
+path = ("C:/Users/geral/OneDrive - University of Iowa/PhD portfolio/2. Courses/3. Fall 2022/PSQF7375 Bayesian Psychometric Modeling (Jonathan Templin)/Bayes/Shift 1")
 file.names = dir(path, pattern=".txt")
 
 ##################################
@@ -107,7 +107,7 @@ Data$Euclidean = sqrt(abs(Data$T_numCorr -Data$T_numInc)^2 + abs(Data$T_areaCorr
 # City Block distance
 Data$CityBlock = abs(Data$T_numCorr -Data$T_numInc) + abs(Data$T_areaCorr -Data$T_areaInc)
 
-Data = subset(Data, Data$session < 41)
+#Data = subset(Data, Data$session < 41)
 
 
 ##################################

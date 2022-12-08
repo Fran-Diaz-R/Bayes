@@ -24,6 +24,12 @@ library(modeest)
 
 ## Data
 ```{r}
+write.csv(Data, 'data_full.csv')
+```
+
+
+
+```{r}
 Data = read.csv("DataBayes.csv")
 Data = as.data.frame(Data)
 Data$CityBlock = Data$CityBlock-16
