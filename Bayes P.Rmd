@@ -6,45 +6,60 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(include = FALSE)
 ```
 
-```{r packages, include=FALSE}
-if (!require(readxl)) install.packages("dplyr")
-
-library(cmdstanr)
-library(HDInterval)
-library(bayesplot)
-library(easypackages)
-library(dplyr)
-
-
-# readxl: for reading data set
-if (!require(readxl)) install.packages("readxl")
-library(readxl)
-
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-BiocManager::install("genefilter", version = "3.15")
-if (!requireNamespace("modeest")) install.packages("modeest")
-library(modeest)
+```{r packages}
+needed_packages = c("invgamma", "cmdstanr", "HDInterval", "bayesplot","BiocManager","modeest", 'kableExtra', 'formattable', 'tidyverse')
+for(i in 1:length(needed_packages)){
+  haspackage = require(needed_packages[i], character.only = TRUE)
+  if(haspackage == FALSE){
+    install.packages(needed_packages[i])
+  }
+  library(needed_packages[i], character.only = TRUE)
+}
+rm(haspackage, needed_packages, i)
 ```
 
 ## Data
 ```{r}
-Data <- read.csv(file = "https://raw.githubusercontent.com/Fran-Diaz-R/Bayes/main/data_full.csv")
+# full data set
+d <- read.csv(file = "https://raw.githubusercontent.com/Fran-Diaz-R/Bayes/main/data_full.csv")
 
-Data$a_n <- paste(Data$areaIncorrect, Data$numIncorrect, sep = '_')
-x= 1:81
-Data$a_n2 = factor(Data$a_n, labels = c(unique(x)))
-Data$a_n2 = as.numeric(Data$a_n2)
+# some data manipulation / item represents pairwise comparison
+d <- d %>% mutate(
+  item = paste(areaIncorrect, numIncorrect, sep = '_'),
+  item = as.numeric(factor(item))) %>%
+  arrange(item)
 
-Data_43R = subset(Data, Data$bird == "43R")
-Data_48W = subset(Data, Data$bird == "48W")
-Data_54Y = subset(Data, Data$bird == "54Y")
-Data_56Y = subset(Data, Data$bird == "56Y")
+# we have balanced data per pidgeon, session and item
+d %>% group_by(bird) %>% summarise(min_i = min(item),
+                                   max_i = max(item),
+                                   min_s = min(session),
+                                   max_s = max(session))
+#there is no missing data
+sum(is.na(d$accuracy))
 
-dummy <- Data_43R %>% select(accuracy, session, Euclidean, CityBlock, a_n2)
-colnames(dummy) <- c('y', 's', 'e', 'c', 'item')
+# important variables
+data <- d %>% select(bird, accuracy, session, Euclidean, CityBlock, item)
+colnames(data) <- c('Bird', 'y', 'Session', 'Euclidean', 'Cityblock', 'Item')
+```
+
+## Sample
+```{r}
+desc <- data %>% group_by(Bird) %>% summarise(
+                                   Items = max(Item),
+                                   Sessions = max(Session),
+                                   Responses = n(),
+                                   Avg_Outcome = mean(y))
+
+kable_styling(kable(desc,
+                    digits = 3,
+                    col.names = c('Bird', 'Items', 'Sessions', 'Responses', 'Avg. Outcomes'),
+                    caption = 'Descriptive statistics of sample',
+                    align = 'lcccc'),
+              bootstrap_options = c('hover', 'responsive', 'bordered'),
+              full_width = F, position = 'center', font_size =12)
 ```
 
 
