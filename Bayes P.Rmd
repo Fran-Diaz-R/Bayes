@@ -25,6 +25,31 @@ library(modeest)
 ## Data
 ```{r}
 write.csv(Data, 'data_full.csv')
+
+Data$a_n <- paste(Data$areaIncorrect, Data$numIncorrect, sep = '_')
+
+x= 1:81
+Data$a_n2 = factor(Data$a_n, labels = c(unique(x)))
+Data$a_n2 = as.numeric(Data$a_n2)
+
+Data_43R = subset(Data, Data$bird == "43R")
+Data_48W = subset(Data, Data$bird == "48W")
+Data_54Y = subset(Data, Data$bird == "54Y")
+Data_56Y = subset(Data, Data$bird == "56Y")
+
+prueba <- Data_43R %>% select(accuracy, Euclidean, CityBlock, a_n2)
+colnames(prueba) <- c('y', 'e', 'c', 'item')
+
+prueba%>%
+  pivot_wider(names_from = item, values_from =y)
+wide
+
+
+
+
+
+
+
 ```
 
 
@@ -42,14 +67,13 @@ CityBlock_Model_Syntax = "
 
 data {
   int<lower=0> N;
-  vector[N] cityblock;
-  int<lower=0, upper=1> acc[N];
+  vector[N] c;
+  int<lower=0, upper=1> y[N];
 }
 
 parameters {
-  real alpha;
-  real betaC;
-  real betaD
+  real beta0;
+  real betac;
 }
 
 ## number of successes out of 2 trials (per day)
