@@ -10,7 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r packages, include=FALSE}
-libraries("ggplot2", "cmdstanr", "HDInterval", "bayesplot", "easypackages")
+if (!require(readxl)) install.packages("dplyr")
+
+library(cmdstanr)
+library(HDInterval)
+library(bayesplot)
+library(easypackages)
+library(dplyr)
+
 
 # readxl: for reading data set
 if (!require(readxl)) install.packages("readxl")
@@ -24,10 +31,9 @@ library(modeest)
 
 ## Data
 ```{r}
-write.csv(Data, 'data_full.csv')
+Data <- read.csv(file = "https://raw.githubusercontent.com/Fran-Diaz-R/Bayes/main/data_full.csv")
 
 Data$a_n <- paste(Data$areaIncorrect, Data$numIncorrect, sep = '_')
-
 x= 1:81
 Data$a_n2 = factor(Data$a_n, labels = c(unique(x)))
 Data$a_n2 = as.numeric(Data$a_n2)
@@ -37,27 +43,8 @@ Data_48W = subset(Data, Data$bird == "48W")
 Data_54Y = subset(Data, Data$bird == "54Y")
 Data_56Y = subset(Data, Data$bird == "56Y")
 
-prueba <- Data_43R %>% select(accuracy, Euclidean, CityBlock, a_n2)
-colnames(prueba) <- c('y', 'e', 'c', 'item')
-
-prueba%>%
-  pivot_wider(names_from = item, values_from =y)
-wide
-
-
-
-
-
-
-
-```
-
-
-
-```{r}
-Data = read.csv("DataBayes.csv")
-Data = as.data.frame(Data)
-Data$CityBlock = Data$CityBlock-16
+dummy <- Data_43R %>% select(accuracy, session, Euclidean, CityBlock, a_n2)
+colnames(dummy) <- c('y', 's', 'e', 'c', 'item')
 ```
 
 
