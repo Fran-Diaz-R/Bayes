@@ -1,75 +1,13 @@
----
-title: "Bayes"
-author: "GPF"
-date: "2022-12-07"
-output: html_document
----
+load("temp.RData")
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(include = FALSE)
-```
+# dummy code birds
+newData = a
+birdDummyCodes = model.matrix(object = formula(~1+factor(newData$Bird)))[,2:4]
 
-```{r packages}
-needed_packages = c("invgamma", "cmdstanr", "HDInterval", "bayesplot","BiocManager","modeest", 'kableExtra', 'formattable', 'dplyr')
-for(i in 1:length(needed_packages)){
-  haspackage = require(needed_packages[i], character.only = TRUE)
-  if(haspackage == FALSE){
-    install.packages(needed_packages[i])
-  }
-  library(needed_packages[i], character.only = TRUE)
-}
-rm(haspackage, needed_packages, i)
-```
+# 43R is reference bird
 
-## Data
-```{r}
-# full data set
-d <- read.csv(file = "https://raw.githubusercontent.com/Fran-Diaz-R/Bayes/main/data_full.csv")
-
-# some data manipulation / item represents pairwise comparison
-d <- d %>% mutate(
-  item = paste(areaIncorrect, numIncorrect, sep = '_'),
-  item = as.numeric(factor(item))) %>%
-  arrange(item)
-
-# important variables
-data <- d %>% select(bird, accuracy, session, Euclidean, CityBlock, item)
-colnames(data) <- c('Bird', 'y', 'Session', 'Euclidean', 'Cityblock', 'Item')
-newData <- data %>% group_by(Bird, Item, Session) %>% mutate(y2 = sum(y))
-newData <- unique(newData[c('Bird', 'Session', 'Euclidean', 'Cityblock', 'Item', 'y2')])
-rm(d,data)
-```
-
-## Sample
-```{r}
-# we have balanced data per pidgeon, session and item
-newData %>% group_by(Bird) %>% summarise(min_i = min(Item),
-                                   max_i = max(Item),
-                                   min_s = min(Session),
-                                   max_s = max(Session))
-#there is no missing data
-sum(is.na(newData$y2))
-
-desc <- newData %>% group_by(Bird) %>% summarise(
-                                   Items = max(Item),
-                                   Sessions = max(Session),
-                                   Responses = n(),
-                                   Avg_Outcome = mean(y2))
-
-kable_styling(kable(desc,
-                    digits = 3,
-                    col.names = c('Bird', 'Items', 'Sessions', 'Responses', 'Avg. Outcomes'),
-                    caption = 'Descriptive statistics of sample',
-                    align = 'lcccc'),
-              bootstrap_options = c('hover', 'responsive', 'bordered'),
-              full_width = F, position = 'center', font_size =12)
-```
-
-## Models
-
-```{r}
 ## EMPTY Model
-Empty_Model_Syntax = "
+CityBlock_Model_Syntax = "
 
 data {
   int<lower=0> nBirds;   // number of birds
@@ -96,9 +34,6 @@ parameters {
   real betaDB1;
   real betaDB2;
   real betaDB3;
-  real betaCB1;
-  real betaCB2;
-  real betaCB3;
   vector[nItems] itemRandomEffect;
   real<lower=0> itemSD;
 }
@@ -112,39 +47,36 @@ model {
   betaDB1 ~ normal(0, 1);
   betaDB2 ~ normal(0, 1);
   betaDB3 ~ normal(0, 1);
-  betaCB1 ~ normal(0, 1);
-  betaCB2 ~ normal(0, 1);
-  betaCB3 ~ normal(0, 1);
   betaD ~ normal(0, .1);
   betaC ~ normal(0, 1);
-  itemSD ~ exponential(.1);
+  itemSD ~ exponential(1);
   itemRandomEffect ~ normal(0, itemSD);
   for (obs in 1:nObs){
     y[obs] ~ binomial(2,
     inv_logit(
-      beta0 + betaD * logSession[obs] + itemRandomEffect[item[obs]]  + betaC*cityblock[obs] +
+      beta0 + betaD * logSession[obs] + itemRandomEffect[item[obs]]  +
       betaB1*birdDummy[obs, 1] + betaB2*birdDummy[obs, 2] + betaB3*birdDummy[obs, 3] + 
       betaDB1*birdDummy[obs, 1] * logSession[obs] + betaDB2*birdDummy[obs, 2] * logSession[obs] +
-      betaDB3*birdDummy[obs, 3] * logSession[obs] + betaCB1*cityblock[obs]*birdDummy[obs, 1] +
-       betaCB2*cityblock[obs]*birdDummy[obs, 2] + betaCB3*cityblock[obs]*birdDummy[obs, 3] 
+      betaDB3*birdDummy[obs, 3] * logSession[obs] 
+      
       
       )
       );
   }
+  
+  
 }
+
+//generated quantities (R2)
+
+//Model comparison
+//For each value of acc in the iteration, get the LL
 "
-```
 
-```{r}
-Empty_Model_Stan = cmdstan_model(stan_file = write_stan_file(Empty_Model_Syntax))
-```
+CityBlock_Model_Stan = cmdstan_model(stan_file = write_stan_file(CityBlock_Model_Syntax))
 
-```{r}
-# 43R is reference bird
-birdDummyCodes = model.matrix(object = formula(~1+factor(newData$Bird)))[,2:4]
-itemList = unique(newData$Item)[order(unique(newData$Item))]
 
-Empty_StanData = list(
+mode04_StanData = list(
   nBirds = 4,
   birdDummy = birdDummyCodes,
   nObs = nrow(newData),
@@ -155,8 +87,8 @@ Empty_StanData = list(
   y = newData$y2
 )
 
-Empty_Model_Samples = Empty_Model_Stan$sample(
-  data = Empty_StanData,
+CityBlock_Model_Samples = CityBlock_Model_Stan$sample(
+  data = mode04_StanData,
   seed = 190920221,
   chains = 4,
   parallel_chains = 4,
@@ -166,13 +98,12 @@ Empty_Model_Samples = Empty_Model_Stan$sample(
 
 # assess convergence: summary of all parameters
 
-Empty_Model_Samples$summary()
+CityBlock_Model_Samples$summary(variables = c("beta0", "betaD", "itemSD"))
 
 # maximum R-hat
-max(Empty_Model_Samples$summary()$rhat, na.rm = TRUE)
-```
+max(CityBlock_Model_Samples$summary()$rhat, na.rm = TRUE)
 
-```{r}
+
 ## CITYBLOCK Model
 CityBlock_Model_Syntax = "
 
@@ -231,23 +162,25 @@ model {
       betaB1*birdDummy[obs, 1] + betaB2*birdDummy[obs, 2] + betaB3*birdDummy[obs, 3] + 
       betaDB1*birdDummy[obs, 1] * logSession[obs] + betaDB2*birdDummy[obs, 2] * logSession[obs] +
       betaDB3*birdDummy[obs, 3] * logSession[obs] + betaCB1*cityblock[obs]*birdDummy[obs, 1] +
-       betaCB2*cityblock[obs]*birdDummy[obs, 2] + betaCB3*cityblock[obs]*birdDummy[obs, 3]
+       betaCB2*cityblock[obs]*birdDummy[obs, 2] + betaCB3*cityblock[obs]*birdDummy[obs, 3] 
+      
       )
       );
   }
+  
+  
 }
 
+//generated quantities (R2)
+
+//Model comparison
+//For each value of acc in the iteration, get the LL
 "
-```
 
-
-```{r}
 CityBlock_Model_Stan = cmdstan_model(stan_file = write_stan_file(CityBlock_Model_Syntax))
-```
 
 
-```{r}
-Cityblock_StanData = list(
+mode04_StanData = list(
   nBirds = 4,
   birdDummy = birdDummyCodes,
   nObs = nrow(newData),
@@ -269,15 +202,13 @@ CityBlock_Model_Samples = CityBlock_Model_Stan$sample(
 
 # assess convergence: summary of all parameters
 
-CityBlock_Model_Samples$summary()
+CityBlock_Model_Samples$summary(variables = c("beta0", "betaD", "itemSD"))
 
 # maximum R-hat
 max(CityBlock_Model_Samples$summary()$rhat, na.rm = TRUE)
-```
 
-```{r}
 ## Euclidean Model
-Euclidean_Model_Syntax = "
+CityBlock_Model_Syntax = "
 
 data {
   int<lower=0> nBirds;   // number of birds
@@ -339,18 +270,20 @@ model {
       )
       );
   }
+  
+  
 }
+
+//generated quantities (R2)
+
+//Model comparison
+//For each value of acc in the iteration, get the LL
 "
-```
+
+CityBlock_Model_Stan = cmdstan_model(stan_file = write_stan_file(CityBlock_Model_Syntax))
 
 
-```{r}
-Euclidean_Model_Stan = cmdstan_model(stan_file = write_stan_file(Euclidean_Model_Syntax))
-```
-
-
-```{r}
-Euclidean_StanData = list(
+mode04_StanData = list(
   nBirds = 4,
   birdDummy = birdDummyCodes,
   nObs = nrow(newData),
@@ -361,52 +294,11 @@ Euclidean_StanData = list(
   y = newData$y2
 )
 
-Euclidean_Model_Samples = Euclidean_Model_Stan$sample(
-  data = Euclidean_StanData,
+CityBlock_Model_Samples = CityBlock_Model_Stan$sample(
+  data = mode04_StanData,
   seed = 190920221,
   chains = 4,
   parallel_chains = 4,
   iter_warmup = 400,
   iter_sampling = 400
 )
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
